@@ -13,11 +13,16 @@ public class TeleOpDrive extends CommandBase {
     private static final XboxController controller = RobotContainer.controller;
 
     public TeleOpDrive() {
+        addRequirements(drivetrain);
     }
 
     @Override
     public void execute() {
-        drivetrain.arcadeDrive(controller.getRightX(), controller.getLeftY()); //move robot using controller input
+        double rotation = Math.pow(controller.getRightX(), 3);
+        double throttle = Math.pow(controller.getLeftY(),  3);
+        if (Math.abs(rotation) <= 0.05) rotation = 0;
+        if (Math.abs(throttle) <= 0.05) throttle = 0;
+        drivetrain.arcadeDrive(rotation,throttle);
     }
 
     @Override

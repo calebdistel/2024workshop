@@ -4,11 +4,14 @@ import com.revrobotics.CANSparkMax;
 import com.revrobotics.CANSparkMax.IdleMode;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
+import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 public class Drivetrain extends SubsystemBase {
 
     private static final Drivetrain instance = new Drivetrain();
+
+    private PIDController pid = new PIDController(0.2, 0, 0);
 
     public static Drivetrain getInstance() {
         return instance;
@@ -18,7 +21,6 @@ public class Drivetrain extends SubsystemBase {
     private CANSparkMax r2 = new CANSparkMax(2, MotorType.kBrushless); // right motor id 1
     private CANSparkMax l1 = new CANSparkMax(3, MotorType.kBrushless); // left motor id 2
     private CANSparkMax l2 = new CANSparkMax(4, MotorType.kBrushless); // left motor id 3
-
 
     public Drivetrain() { // Constructor: Use an external controller object for local use
         // left side must be inverted to reflect proper output
@@ -30,10 +32,20 @@ public class Drivetrain extends SubsystemBase {
         r2.setIdleMode(IdleMode.kCoast);
         l1.setIdleMode(IdleMode.kCoast);
         l2.setIdleMode(IdleMode.kCoast);
+        r2.follow(r1);
         r1.burnFlash();
         r2.burnFlash();
         l1.burnFlash();
         l2.burnFlash();
+    }
+
+    public class ChassisSpeeds {
+        double leftSpeed;
+        double rightSpeed;
+        public ChassisSpeeds(double leftSpeed, double rightSpeed) {
+            this.leftSpeed = leftSpeed;
+            this.rightSpeed = rightSpeed;
+        }
     }
 
     @Override //Overridden because this is inherited from SubsystemBase
@@ -47,18 +59,49 @@ public class Drivetrain extends SubsystemBase {
      * @param throttle value must be within [-1, 1]
      */
     public void arcadeDrive(double rotation, double throttle) { // control drive motors with throttle and rotational velocity
-        double rightSpeed = throttle - rotation; // calculation for right motor speed
-        double leftSpeed = throttle + rotation; // calculation for left motor speed
+        double rightSpeed = throttle + rotation; // calculation for right motor speed
+        double leftSpeed = throttle - rotation; // calculation for left motor speed
         r1.set(rightSpeed); // set right motor
-        r2.set(rightSpeed); // set right motor
+        //r2.set(rightSpeed); // set right motor
+        
         l1.set(leftSpeed); // set left motor
         l2.set(leftSpeed); // set left motor
     }
 
+    public void drive(ChassisSpeeds speeds) {
+        r1.set(speeds.rightSpeed);
+        ///r2.set(speeds.rightSpeed);
+        l1.set(speeds.leftSpeed);
+        l2.set(speeds.leftSpeed);
+    }
+
     private void driveForward() {
         r1.set(1);
-        r2.set(1);
+        //r2.set(1);
         l1.set(1);
         l2.set(1);
+    }
+
+    public ChassisSpeeds calculatePID(double target) {
+        pid.setSetpoint(target);
+        double leftSpeed = pid.calculate(getLeftDistance());
+        double rightSpeed = pid.calculate(getRightDistance());
+        return new ChassisSpeeds(leftSpeed, rightSpeed);
+    }
+
+    public void resetPID() {
+        pid.reset();
+        pid.setSetpoint(0);
+    }
+
+    public double getLeftDistance() {
+        return l1.getEncoder().getPosition() / 5;
+    }
+    public double getRightDistance() {
+        return r1.getEncoder().getPosition() / 5;
+    }
+    public void resetEncoders() {
+        r1.getEncoder().setPosition(0);
+        l1.getEncoder().setPosition(0);
     }
 }
