@@ -5,13 +5,18 @@ import com.revrobotics.CANSparkMax.IdleMode;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
 import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.math.controller.ProfiledPIDController;
+import edu.wpi.first.math.filter.SlewRateLimiter;
+import edu.wpi.first.math.trajectory.TrapezoidProfile;
+import edu.wpi.first.math.trajectory.TrapezoidProfile.Constraints;
+import edu.wpi.first.math.trajectory.TrapezoidProfile.State;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 public class Drivetrain extends SubsystemBase {
 
     private static final Drivetrain instance = new Drivetrain();
+    private ProfiledPIDController pid = new ProfiledPIDController(0.08, 0, 0, new Constraints(.1, .1));
 
-    private PIDController pid = new PIDController(0.2, 0, 0);
 
     public static Drivetrain getInstance() {
         return instance;
@@ -23,6 +28,7 @@ public class Drivetrain extends SubsystemBase {
     private CANSparkMax l2 = new CANSparkMax(4, MotorType.kBrushless); // left motor id 3
 
     public Drivetrain() { // Constructor: Use an external controller object for local use
+        pid.reset(new State(0, 0));
         // left side must be inverted to reflect proper output
         r1.setInverted(false); // do not invert right
         r2.setInverted(false); // do not invert right
@@ -82,16 +88,16 @@ public class Drivetrain extends SubsystemBase {
         l2.set(1);
     }
 
-    public ChassisSpeeds calculatePID(double target) {
-        pid.setSetpoint(target);
-        double leftSpeed = pid.calculate(getLeftDistance());
-        double rightSpeed = pid.calculate(getRightDistance());
+    public ChassisSpeeds calculatePID(double target, double rotation) {
+        pid.setGoal(new State(target, 0));
+        //angleController.setSetpoint(rotation);
+        double leftSpeed = pid.calculate(getLeftDistance() - rotation);
+        double rightSpeed = pid.calculate(getRightDistance() + rotation);
         return new ChassisSpeeds(leftSpeed, rightSpeed);
     }
 
     public void resetPID() {
-        pid.reset();
-        pid.setSetpoint(0);
+        pid.reset(new State(0, 0));
     }
 
     public double getLeftDistance() {
